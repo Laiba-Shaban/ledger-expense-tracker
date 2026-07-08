@@ -2,7 +2,7 @@
 
 A personal expense tracker built with vanilla HTML, CSS, and JavaScript — no frameworks, no backend. Add, edit, and track your spending with a live budget overview, category breakdown, and CSV export.
 
-**Live demo:** [add your GitHub Pages link here once deployed]
+**Live demo:**  at https://laiba-shaban.github.io/ledger-expense-tracker/
 
 ## Features
 
