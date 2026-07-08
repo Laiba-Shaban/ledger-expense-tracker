@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Personal Expense Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf7ef;
+    --paper-line: #e4ddc9;
+    --ink: #1b2a3a;
+    --ink-soft: #5c6b7a;
+    --gold: #b8901f;
+    --gold-soft: #e8d9ae;
+    --green: #3f6b4f;
+    --green-soft: #d9e6dc;
+    --red: #a13d3d;
+    --red-soft: #f0dcdc;
+    --blue-soft: #dde6f0;
+    --blue: #2c4a6b;
+    --purple-soft: #eee6f0;
+    --purple: #5c3d6b;
+    --shadow: 0 1px 2px rgba(27,42,58,0.06), 0 8px 24px rgba(27,42,58,0.08);
+  }
+
+  [data-theme="dark"] {
+    --paper: #171d24;
+    --paper-line: #2b3440;
+    --ink: #ece7da;
+    --ink-soft: #93a0ab;
+    --green-soft: #24352a;
+    --red-soft: #3a2323;
+    --blue-soft: #202c3a;
+    --purple-soft: #2b2333;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--paper);
+    background-image:
+      repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--paper-line) 40px);
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px 80px;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .ledger { width: 100%; max-width: 640px; }
+
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .masthead-left { display: flex; align-items: baseline; gap: 10px; }
+
+  .masthead h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.3px;
+  }
+
+  .masthead span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  .theme-toggle {
+    background: none;
+    border: 1px solid var(--paper-line);
+    color: var(--ink);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+
+  .balance-card {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 14px;
+    padding: 28px 28px 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  [data-theme="dark"] .balance-card { background: #0e1319; }
+
+  .balance-card::before {
+    content: "";
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(184,144,31,0.25), transparent 70%);
+  }
+
+  .balance-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--gold-soft);
+    margin: 0 0 6px;
+  }
+
+  .balance-amount {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 44px;
+    font-weight: 600;
+    margin: 0;
+    transition: transform 0.25s ease;
+  }
+
+  .balance-amount.bump { transform: scale(1.04); }
+
+  .balance-sub {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: rgba(250,247,239,0.65);
+    flex-wrap: wrap;
+  }
+
+  .balance-sub b { color: var(--paper); font-weight: 600; }
+
+  .budget-bar-track {
+    margin-top: 18px;
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(250,247,239,0.15);
+    overflow: hidden;
+  }
+
+  .budget-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--gold);
+    transition: width 0.3s ease, background 0.3s ease;
+  }
+
+  .budget-bar-fill.over { background: #c25050; }
+
+  .budget-note {
+    margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: rgba(250,247,239,0.6);
+  }
+
+  .panel {
+    background: #fffefb;
+    border: 1px solid var(--paper-line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  [data-theme="dark"] .panel { background: #1d242c; }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .panel h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    margin: 0;
+  }
+
+  form { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: 10px; }
+
+  .budget-form { grid-template-columns: 1fr auto; }
+
+  input, select {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 11px 12px;
+    border: 1px solid var(--paper-line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s ease;
+    width: 100%;
+  }
+
+  input:focus, select:focus { border-color: var(--gold); }
+
+  button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 8px;
+    padding: 11px 18px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    white-space: nowrap;
+  }
+
+  button:hover { background: #10202f; }
+  button:active { transform: scale(0.97); }
+
+  .ghost-btn {
+    background: none;
+    color: var(--ink);
+    border: 1px solid var(--paper-line);
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+
+  .ghost-btn:hover { background: var(--paper); }
+
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+
+  .controls-row label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--ink-soft);
+  }
+
+  .controls-row select { width: auto; padding: 8px 10px; }
+
+  .breakdown { display: flex; flex-direction: column; gap: 10px; }
+
+  .breakdown-row { display: grid; grid-template-columns: 90px 1fr 70px; align-items: center; gap: 10px; }
+
+  .breakdown-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+  }
+
+  .breakdown-track {
+    height: 10px;
+    background: var(--paper);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+
+  .breakdown-fill { height: 100%; border-radius: 5px; }
+  .breakdown-fill.food { background: var(--green); }
+  .breakdown-fill.transport { background: var(--blue); }
+  .breakdown-fill.bills { background: var(--red); }
+  .breakdown-fill.other { background: var(--purple); }
+
+  .breakdown-amount {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    text-align: right;
+  }
+
+  .entries { list-style: none; margin: 0; padding: 0; }
+
+  .entry {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px dashed var(--paper-line);
+    animation: fadeIn 0.25s ease;
+  }
+
+  .entry:last-child { border-bottom: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+
+  .tag.food { background: var(--green-soft); color: var(--green); }
+  .tag.transport { background: var(--blue-soft); color: var(--blue); }
+  .tag.bills { background: var(--red-soft); color: var(--red); }
+  .tag.other { background: var(--purple-soft); color: var(--purple); }
+
+  .entry-name { font-size: 14.5px; font-weight: 500; }
+  .entry-date { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft); }
+  .entry-amount { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; }
+
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1;
+    padding: 4px 7px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .icon-btn:hover { background: var(--blue-soft); color: var(--blue); }
+  .icon-btn.delete:hover { background: var(--red-soft); color: var(--red); }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
+  .empty-state .mark { font-family: 'Playfair Display', serif; font-size: 30px; color: var(--gold); margin-bottom: 8px; }
+  .empty-state p { font-size: 13.5px; margin: 4px 0 0; }
+
+  footer {
+    text-align: center;
+    margin-top: 32px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.5px;
+  }
+
+  @media (max-width: 560px) {
+    form { grid-template-columns: 1fr 1fr; }
+    form button { grid-column: 1 / -1; }
+    .balance-amount { font-size: 34px; }
+    .entry { grid-template-columns: auto 1fr auto; row-gap: 6px; }
+    .entry-date { grid-column: 2 / 3; }
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="ledger">
+
+  <div class="masthead">
+    <div class="masthead-left">
+      <h1>Ledger</h1>
+      <span>Personal Expense Log</span>
+    </div>
+    <button class="theme-toggle" id="themeToggle">🌙 Dark</button>
+  </div>
+
+  <div class="balance-card">
+    <p class="balance-label">Total Spent</p>
+    <p class="balance-amount" id="totalAmount">$0.00</p>
+    <div class="balance-sub">
+      <span>Entries: <b id="entryCount">0</b></span>
+      <span>Top category: <b id="highestCategory">—</b></span>
+    </div>
+    <div class="budget-bar-track">
+      <div class="budget-bar-fill" id="budgetBarFill" style="width:0%"></div>
+    </div>
+    <p class="budget-note" id="budgetNote">Set a monthly budget below to track it here.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>Monthly budget</h2></div>
+    <form id="budgetForm" class="budget-form">
+      <input type="number" id="budgetInput" placeholder="e.g. 15000" min="0" step="1">
+      <button type="submit">Set budget</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>Add an expense</h2></div>
+    <form id="expenseForm">
+      <input type="text" id="expenseName" placeholder="What was it for?" required>
+      <input type="number" id="expenseAmount" placeholder="Amount" min="0" step="0.01" required>
+      <select id="expenseCategory">
+        <option value="food">Food</option>
+        <option value="transport">Transport</option>
+        <option value="bills">Bills</option>
+        <option value="other">Other</option>
+      </select>
+      <button type="submit" id="submitBtn">Add</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>Breakdown by category</h2></div>
+    <div class="breakdown" id="breakdown"></div>
+  </div>
+
+  <div class="panel">
+    <div class="controls-row">
+      <label for="filterCategory">Show</label>
+      <select id="filterCategory">
+        <option value="all">All categories</option>
+        <option value="food">Food</option>
+        <option value="transport">Transport</option>
+        <option value="bills">Bills</option>
+        <option value="other">Other</option>
+      </select>
+      <label for="sortOrder">Sort</label>
+      <select id="sortOrder">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="highest">Highest amount</option>
+        <option value="lowest">Lowest amount</option>
+      </select>
+      <button class="ghost-btn" id="exportBtn" type="button">Export CSV</button>
+    </div>
+    <ul class="entries" id="entriesList"></ul>
+  </div>
+
+  <footer>Saved automatically in this browser — reopen anytime to see it again</footer>
+</div>
+
+<script>
+  const STORAGE_KEY = 'ledger_expenses_v1';
+  const BUDGET_KEY = 'ledger_budget_v1';
+  const THEME_KEY = 'ledger_theme_v1';
+
+  let expenses = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let budget = parseFloat(localStorage.getItem(BUDGET_KEY) || '0');
+  let currentFilter = 'all';
+  let currentSort = 'newest';
+  let editingId = null;
+
+  const form = document.getElementById('expenseForm');
+  const nameInput = document.getElementById('expenseName');
+  const amountInput = document.getElementById('expenseAmount');
+  const categorySelect = document.getElementById('expenseCategory');
+  const submitBtn = document.getElementById('submitBtn');
+  const filterSelect = document.getElementById('filterCategory');
+  const sortSelect = document.getElementById('sortOrder');
+  const entriesList = document.getElementById('entriesList');
+  const totalAmountEl = document.getElementById('totalAmount');
+  const entryCountEl = document.getElementById('entryCount');
+  const highestCategoryEl = document.getElementById('highestCategory');
+  const budgetForm = document.getElementById('budgetForm');
+  const budgetInput = document.getElementById('budgetInput');
+  const budgetBarFill = document.getElementById('budgetBarFill');
+  const budgetNote = document.getElementById('budgetNote');
+  const breakdownEl = document.getElementById('breakdown');
+  const exportBtn = document.getElementById('exportBtn');
+  const themeToggle = document.getElementById('themeToggle');
+
+  const categoryLabels = { food: 'Food', transport: 'Transport', bills: 'Bills', other: 'Other' };
+
+  if (budget > 0) budgetInput.value = budget;
+
+  const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+  document.body.setAttribute('data-theme', savedTheme);
+  themeToggle.textContent = savedTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+
+  themeToggle.addEventListener('click', function () {
+    const next = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.body.setAttribute('data-theme', next);
+    localStorage.setItem(THEME_KEY, next);
+    themeToggle.textContent = next === 'dark' ? '☀️ Light' : '🌙 Dark';
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const name = nameInput.value.trim();
+    const amount = parseFloat(amountInput.value);
+    const category = categorySelect.value;
+    if (!name || isNaN(amount) || amount <= 0) return;
+
+    if (editingId !== null) {
+      const exp = expenses.find(function (x) { return x.id === editingId; });
+      exp.name = name; exp.amount = amount; exp.category = category;
+      editingId = null;
+      submitBtn.textContent = 'Add';
+    } else {
+      expenses.push({ id: Date.now(), name, amount, category, date: new Date().toISOString() });
+    }
+
+    nameInput.value = ''; amountInput.value = ''; nameInput.focus();
+    save(); render();
+  });
+
+  budgetForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    budget = parseFloat(budgetInput.value) || 0;
+    localStorage.setItem(BUDGET_KEY, budget);
+    render();
+  });
+
+  filterSelect.addEventListener('change', function () { currentFilter = filterSelect.value; render(); });
+  sortSelect.addEventListener('change', function () { currentSort = sortSelect.value; render(); });
+
+  function deleteExpense(id) {
+    expenses = expenses.filter(function (exp) { return exp.id !== id; });
+    save(); render();
+  }
+
+  function startEdit(id) {
+    const exp = expenses.find(function (x) { return x.id === id; });
+    if (!exp) return;
+    nameInput.value = exp.name;
+    amountInput.value = exp.amount;
+    categorySelect.value = exp.category;
+    editingId = id;
+    submitBtn.textContent = 'Save';
+    nameInput.focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+  }
+
+  function getFilteredSorted() {
+    let list = currentFilter === 'all' ? expenses.slice() : expenses.filter(function (e) { return e.category === currentFilter; });
+    if (currentSort === 'newest') list.sort(function (a, b) { return b.id - a.id; });
+    if (currentSort === 'oldest') list.sort(function (a, b) { return a.id - b.id; });
+    if (currentSort === 'highest') list.sort(function (a, b) { return b.amount - a.amount; });
+    if (currentSort === 'lowest') list.sort(function (a, b) { return a.amount - b.amount; });
+    return list;
+  }
+
+  function calculateTotal(list) {
+    return list.reduce(function (sum, exp) { return sum + exp.amount; }, 0);
+  }
+
+  function getCategoryTotals() {
+    const totals = { food: 0, transport: 0, bills: 0, other: 0 };
+    expenses.forEach(function (exp) { totals[exp.category] += exp.amount; });
+    return totals;
+  }
+
+  function getHighestCategory() {
+    if (expenses.length === 0) return '—';
+    const totals = getCategoryTotals();
+    const top = Object.keys(totals).reduce(function (a, b) { return totals[a] > totals[b] ? a : b; });
+    return totals[top] > 0 ? categoryLabels[top] : '—';
+  }
+
+  function renderBreakdown() {
+    const totals = getCategoryTotals();
+    const grandTotal = calculateTotal(expenses);
+    breakdownEl.innerHTML = '';
+
+    Object.keys(totals).forEach(function (cat) {
+      const pct = grandTotal > 0 ? (totals[cat] / grandTotal) * 100 : 0;
+      const row = document.createElement('div');
+      row.className = 'breakdown-row';
+      row.innerHTML =
+        '<span class="breakdown-label">' + categoryLabels[cat] + '</span>' +
+        '<div class="breakdown-track"><div class="breakdown-fill ' + cat + '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+        '<span class="breakdown-amount">$' + totals[cat].toFixed(2) + '</span>';
+      breakdownEl.appendChild(row);
+    });
+  }
+
+  function renderEntries(list) {
+    entriesList.innerHTML = '';
+
+    if (list.length === 0) {
+      entriesList.innerHTML =
+        '<li class="empty-state"><div class="mark">§</div><p>No entries yet — add your first expense above.</p></li>';
+      return;
+    }
+
+    list.forEach(function (exp) {
+      const dateStr = new Date(exp.date || exp.id).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const li = document.createElement('li');
+      li.className = 'entry';
+      li.innerHTML =
+        '<span class="tag ' + exp.category + '">' + categoryLabels[exp.category] + '</span>' +
+        '<span class="entry-name">' + escapeHtml(exp.name) + '<br><span class="entry-date">' + dateStr + '</span></span>' +
+        '<span class="entry-amount">$' + exp.amount.toFixed(2) + '</span>' +
+        '<button class="icon-btn edit" title="Edit" data-id="' + exp.id + '">&#9998;</button>' +
+        '<button class="icon-btn delete" title="Delete" data-id="' + exp.id + '">&times;</button>';
+      entriesList.appendChild(li);
+    });
+
+    entriesList.querySelectorAll('.icon-btn.delete').forEach(function (btn) {
+      btn.addEventListener('click', function () { deleteExpense(Number(btn.getAttribute('data-id'))); });
+    });
+    entriesList.querySelectorAll('.icon-btn.edit').forEach(function (btn) {
+      btn.addEventListener('click', function () { startEdit(Number(btn.getAttribute('data-id'))); });
+    });
+  }
+
+  function renderBudget() {
+    const total = calculateTotal(expenses);
+    if (budget <= 0) {
+      budgetBarFill.style.width = '0%';
+      budgetNote.textContent = 'Set a monthly budget below to track it here.';
+      return;
+    }
+    const pct = Math.min((total / budget) * 100, 100);
+    budgetBarFill.style.width = pct.toFixed(1) + '%';
+    budgetBarFill.classList.toggle('over', total > budget);
+
+    if (total > budget) {
+      budgetNote.textContent = 'Over budget by $' + (total - budget).toFixed(2) + ' (budget: $' + budget.toFixed(2) + ')';
+    } else {
+      budgetNote.textContent = '$' + (budget - total).toFixed(2) + ' left of your $' + budget.toFixed(2) + ' budget';
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function exportCSV() {
+    if (expenses.length === 0) return;
+    let csv = 'Name,Amount,Category,Date\n';
+    expenses.forEach(function (exp) {
+      const dateStr = new Date(exp.date || exp.id).toISOString().split('T')[0];
+      csv += '"' + exp.name.replace(/"/g, '""') + '",' + exp.amount + ',' + categoryLabels[exp.category] + ',' + dateStr + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'expenses.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  exportBtn.addEventListener('click', exportCSV);
+
+  function render() {
+    const filteredSorted = getFilteredSorted();
+    const totalOfView = calculateTotal(filteredSorted);
+
+    totalAmountEl.textContent = '$' + totalOfView.toFixed(2);
+    totalAmountEl.classList.add('bump');
+    setTimeout(function () { totalAmountEl.classList.remove('bump'); }, 250);
+
+    entryCountEl.textContent = expenses.length;
+    highestCategoryEl.textContent = getHighestCategory();
+
+    renderBudget();
+    renderBreakdown();
+    renderEntries(filteredSorted);
+  }
+
+  render();
+</script>
+
+</body>
+</html>
